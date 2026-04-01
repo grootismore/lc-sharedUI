@@ -10,8 +10,6 @@ export interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'ui-theme';
-
 export interface ThemeProviderProps {
   children: React.ReactNode;
   /**
@@ -22,27 +20,35 @@ export interface ThemeProviderProps {
   /**
    * Called whenever the theme changes so the caller can persist it
    * (e.g. sync to the user profile in the database).
+   * Also called once on mount with the resolved initial theme.
    */
   onThemeChange?: (theme: Theme) => void;
+  /**
+   * localStorage key used to persist the theme.
+   * Override this if multiple apps share the same domain to avoid key collisions.
+   * Defaults to "ui-theme".
+   */
+  storageKey?: string;
 }
 
 export function ThemeProvider({
   children,
   initialTheme,
   onThemeChange,
+  storageKey = 'ui-theme',
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (initialTheme) return initialTheme;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       if (stored === 'dark' || stored === 'light') return stored;
     } catch {
-      // localStorage unavailable
+      // localStorage unavailable (SSR, private browsing)
     }
     return 'light';
   });
 
-  // Apply .dark class to <html> and persist
+  // Apply .dark class to <html> and persist to localStorage
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -51,14 +57,14 @@ export function ThemeProvider({
       root.classList.remove('dark');
     }
     try {
-      localStorage.setItem(STORAGE_KEY, theme);
+      localStorage.setItem(storageKey, theme);
     } catch {
       // localStorage unavailable
     }
     onThemeChange?.(theme);
-  }, [theme, onThemeChange]);
+  }, [theme, storageKey, onThemeChange]);
 
-  // If a server-provided initialTheme arrives later (e.g. after auth), adopt it
+  // Adopt a server-provided initialTheme when it arrives after first render (e.g. post-auth)
   useEffect(() => {
     if (initialTheme) setThemeState(initialTheme);
   }, [initialTheme]);

@@ -17,12 +17,19 @@ export interface LayoutProps {
   appName: string;
   /** Optional logo element (overrides the default indigo initials box). */
   logo?: React.ReactNode;
-  /** Header slot — right side of the fixed top bar (e.g. notifications + avatar). */
+  /** Slot on the right side of the sticky header bar (notifications, avatar, etc.). */
   headerRight?: React.ReactNode;
   /** Callback fired when a nav item is clicked. Use to update the router. */
   onNavigate: (path: string) => void;
   /** The currently active path, used to highlight the active nav item. */
   activePath?: string;
+  /**
+   * Whether to render the built-in dark/light toggle at the bottom of the
+   * sidebar. Set to false when your app handles theme switching elsewhere
+   * (e.g. inside a user settings page or the headerRight slot).
+   * Defaults to true.
+   */
+  showThemeToggle?: boolean;
   children: React.ReactNode;
 }
 
@@ -33,6 +40,7 @@ export function Layout({
   headerRight,
   onNavigate,
   activePath,
+  showThemeToggle = true,
   children,
 }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
@@ -41,8 +49,69 @@ export function Layout({
 
   const sidebarWidth = sidebarExpanded ? 'w-64' : 'w-20';
 
+  // ── Shared nav item renderer ──────────────────────────────────────────────
+  function NavButton({
+    item,
+    compact = false,
+    extraPy = false,
+    onClick,
+  }: {
+    item: NavItem;
+    compact?: boolean;
+    extraPy?: boolean;
+    onClick?: () => void;
+  }) {
+    const active = activePath === item.path;
+    return (
+      <button
+        key={item.path}
+        onClick={() => {
+          onNavigate(item.path);
+          onClick?.();
+        }}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 rounded-xl text-sm font-medium transition-all',
+          extraPy ? 'py-2.5' : 'py-2',
+          active
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
+          compact && 'justify-center',
+        )}
+        title={compact ? item.label : undefined}
+        aria-current={active ? 'page' : undefined}
+      >
+        <span className="shrink-0">{item.icon}</span>
+        {!compact && <span className="truncate">{item.label}</span>}
+      </button>
+    );
+  }
+
+  // ── Theme toggle button ───────────────────────────────────────────────────
+  function ThemeToggle({ compact = false, extraPy = false }: { compact?: boolean; extraPy?: boolean }) {
+    return (
+      <button
+        onClick={toggleTheme}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 rounded-xl text-sm font-medium transition-all',
+          extraPy ? 'py-2.5' : 'py-2',
+          'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
+          compact && 'justify-center',
+        )}
+        title={compact ? (theme === 'dark' ? 'Light mode' : 'Dark mode') : undefined}
+      >
+        <span className="shrink-0">
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </span>
+        {!compact && (
+          <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <div className="flex h-full bg-slate-50 dark:bg-slate-800 overflow-hidden">
+
       {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
@@ -68,9 +137,7 @@ export function Layout({
               </div>
             )}
             {sidebarExpanded && (
-              <span className="font-extrabold text-indigo-600 truncate">
-                {appName}
-              </span>
+              <span className="font-extrabold text-indigo-600 truncate">{appName}</span>
             )}
           </div>
           <button
@@ -82,49 +149,19 @@ export function Layout({
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
-          {navItems.map(item => {
-            const active = activePath === item.path;
-            return (
-              <button
-                key={item.path}
-                onClick={() => onNavigate(item.path)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all',
-                  active
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
-                  !sidebarExpanded && 'justify-center',
-                )}
-                title={!sidebarExpanded ? item.label : undefined}
-              >
-                <span className="shrink-0">{item.icon}</span>
-                {sidebarExpanded && <span className="truncate">{item.label}</span>}
-              </button>
-            );
-          })}
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2" aria-label="Main navigation">
+          {navItems.map(item => (
+            <NavButton key={item.path} item={item} compact={!sidebarExpanded} />
+          ))}
         </nav>
 
-        {/* Theme toggle */}
-        <div className="px-2 py-4 border-t border-slate-200 dark:border-slate-700">
-          <button
-            onClick={toggleTheme}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all',
-              'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
-              !sidebarExpanded && 'justify-center',
-            )}
-            title={!sidebarExpanded ? 'Toggle theme' : undefined}
-          >
-            <span className="shrink-0">
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </span>
-            {sidebarExpanded && (
-              <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-            )}
-          </button>
-        </div>
+        {/* Theme toggle (opt-out via showThemeToggle={false}) */}
+        {showThemeToggle && (
+          <div className="px-2 py-4 border-t border-slate-200 dark:border-slate-700">
+            <ThemeToggle compact={!sidebarExpanded} />
+          </div>
+        )}
       </aside>
 
       {/* ── Mobile overlay drawer ── */}
@@ -160,7 +197,7 @@ export function Layout({
                 </div>
                 <button
                   onClick={() => setMobileOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
                   aria-label="Close menu"
                 >
                   <X size={20} />
@@ -168,50 +205,33 @@ export function Layout({
               </div>
 
               {/* Mobile nav */}
-              <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3">
-                {navItems.map(item => {
-                  const active = activePath === item.path;
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => {
-                        onNavigate(item.path);
-                        setMobileOpen(false);
-                      }}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                        active
-                          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
-                      )}
-                    >
-                      <span className="shrink-0">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
+              <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3" aria-label="Main navigation">
+                {navItems.map(item => (
+                  <NavButton
+                    key={item.path}
+                    item={item}
+                    extraPy
+                    onClick={() => setMobileOpen(false)}
+                  />
+                ))}
               </nav>
 
               {/* Mobile theme toggle */}
-              <div className="px-3 py-4 border-t border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={toggleTheme}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                  <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-                </button>
-              </div>
+              {showThemeToggle && (
+                <div className="px-3 py-4 border-t border-slate-200 dark:border-slate-700">
+                  <ThemeToggle extraPy />
+                </div>
+              )}
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      {/* ── Fixed top header (mobile only) ── */}
+      {/* ── Fixed top bar (mobile) ── */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-16 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+          className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
           aria-label="Open menu"
         >
           <Menu size={22} />
@@ -229,15 +249,15 @@ export function Layout({
           sidebarExpanded ? 'md:ml-64' : 'md:ml-20',
         )}
       >
-        {/* Desktop header bar */}
+        {/* Desktop sticky header bar */}
         {headerRight && (
           <div className="hidden md:flex items-center justify-end px-8 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-10">
             {headerRight}
           </div>
         )}
-
         <div className="max-w-7xl mx-auto p-4 md:p-8">{children}</div>
       </main>
+
     </div>
   );
 }
