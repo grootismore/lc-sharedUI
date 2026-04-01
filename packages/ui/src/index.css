@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-slate-50 dark:bg-slate-800;
+}
+
+/* Subtle custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+* { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.5) transparent; }

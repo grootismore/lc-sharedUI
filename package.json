@@ -1,0 +1,14 @@
+{
+  "name": "lc-sharedui",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=packages/ui",
+    "dev": "npm run dev --workspace=packages/ui",
+    "lint": "npm run lint --workspace=packages/ui",
+    "typecheck": "npm run typecheck --workspace=packages/ui"
+  }
+}
